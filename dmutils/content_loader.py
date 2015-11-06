@@ -172,6 +172,15 @@ class ContentSection(object):
             if type is None or question.get('type') == type
         ]
 
+    def get_valid_params(self):
+        valid_params = set(self.get_question_ids())
+        for question in self.questions:
+          # if the question has fields, swap the id out for them as a valid param
+          if 'fields' in question:
+            valid_params.update(question['fields'].values())
+            valid_params.remove(question['id'])
+        return valid_params
+
     def get_data(self, form_data):
         """Extract data for a section from a submitted form
 
@@ -187,9 +196,10 @@ class ContentSection(object):
         """
         # strip trailing and leading whitespace from form values
         form_data = ImmutableMultiDict((k, v.strip()) for k, v in form_data.items(multi=True))
+        valid_params = self.get_valid_params()
 
         section_data = {}
-        for key in set(form_data) & set(self.get_question_ids()):
+        for key in set(form_data) & self.get_valid_params():
             if self._is_list_type(key):
                 section_data[key] = form_data.getlist(key)
             elif self._is_boolean_type(key):
@@ -197,7 +207,7 @@ class ContentSection(object):
             elif self._is_numeric_type(key):
                 section_data[key] = convert_to_number(form_data[key])
             elif self._is_pricing_type(key):
-                section_data.update(expand_pricing_field(form_data.getlist(key)))
+                section_data[key] = form_data[key]
             elif self._is_not_upload(key):
                 section_data[key] = form_data[key]
 
