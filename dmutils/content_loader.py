@@ -152,16 +152,9 @@ class ContentSection(object):
         """Return a list of field names that this section returns
 
         This list of field names corresponds to the keys of the data returned
-        by :func:`ContentSection.get_data`. This only affects the pricing question
-        that gets expanded into the the pricing fields.
+        by :func:`ContentSection.get_data`.
         """
-        question_ids = self.get_question_ids()
-        if self._has_pricing_type():
-            question_ids = [
-                q for q in question_ids if not self._is_pricing_type(q)
-            ] + PRICE_FIELDS
-
-        return question_ids
+        return list(self.get_valid_params())
 
     def _has_pricing_type(self):
         return any(self._is_pricing_type(q) for q in self.get_question_ids())
