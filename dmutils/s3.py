@@ -51,8 +51,6 @@ class S3(object):
         """
         path = path.lstrip('/')
 
-        self._move_existing(path, move_prefix)
-
         key = self.bucket.new_key(path)
         filesize = get_file_size_up_to_maximum(file)
         timestamp = timestamp or datetime.datetime.utcnow()
@@ -99,7 +97,6 @@ class S3(object):
             return self._format_key(key, False, key.get_metadata('timestamp'))
 
     def delete_key(self, path):
-        self._move_existing(path, None)
         self.bucket.delete_key(path)
 
     def list(self, prefix='', delimiter='', load_timestamps=False):
@@ -146,18 +143,6 @@ class S3(object):
             'size': key.size
         }
 
-    def _move_existing(self, existing_path, move_prefix=None):
-        if move_prefix is None:
-            move_prefix = default_move_prefix()
-
-        if self.bucket.get_key(existing_path):
-            path, name = os.path.split(existing_path)
-            self.bucket.copy_key(
-                os.path.join(path, '{}-{}'.format(move_prefix, name)),
-                self.bucket_name,
-                existing_path
-            )
-
     def _get_mimetype(self, filename):
         mimetype, _ = mimetypes.guess_type(filename)
         return mimetype
@@ -168,7 +153,3 @@ def get_file_size_up_to_maximum(file_contents):
     file_contents.seek(0)
 
     return size
-
-
-def default_move_prefix():
-    return datetime.datetime.utcnow().isoformat()

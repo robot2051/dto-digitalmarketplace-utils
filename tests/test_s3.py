@@ -81,15 +81,6 @@ class TestS3Uploader(unittest.TestCase):
 
         assert 'folder/test-file.pdf' not in mock_bucket.keys
 
-    @freeze_time('2015-10-10')
-    def test_delete_key_moves_file_with_prefix(self):
-        mock_bucket = FakeBucket(['folder/test-file.pdf'])
-        self.s3_mock.get_bucket.return_value = mock_bucket
-
-        S3('test-bucket').delete_key('folder/test-file.pdf')
-
-        assert 'folder/2015-10-10T00:00:00-test-file.pdf' in mock_bucket.keys
-
     def test_list_files(self):
         mock_bucket = mock.Mock()
         self.s3_mock.get_bucket.return_value = mock_bucket
@@ -217,49 +208,16 @@ class TestS3Uploader(unittest.TestCase):
         S3('test-bucket').save('/folder/test-file.pdf', mock_file('blah', 123))
         self.assertEqual(mock_bucket.keys, set(['folder/test-file.pdf']))
 
-    def test_default_move_prefix_is_datetime(self):
-        mock_bucket = FakeBucket(['folder/test-file.pdf'])
-        self.s3_mock.get_bucket.return_value = mock_bucket
-        now = datetime.datetime(2015, 1, 1, 1, 2, 3, 4)
-
-        with mock.patch.object(datetime, 'datetime',
-                               mock.Mock(wraps=datetime.datetime)) as patched:
-            patched.utcnow.return_value = now
-            S3('test-bucket').save(
-                'folder/test-file.pdf', mock_file('blah', 123),
-            )
-
-            self.assertEqual(mock_bucket.keys, set([
-                'folder/test-file.pdf',
-                'folder/2015-01-01T01:02:03.000004-test-file.pdf'
-            ]))
-
     def test_save_existing_file(self):
         mock_bucket = FakeBucket(['folder/test-file.pdf'])
         self.s3_mock.get_bucket.return_value = mock_bucket
 
         S3('test-bucket').save(
-            'folder/test-file.pdf', mock_file('blah', 123),
-            move_prefix='OLD'
+            'folder/test-file.pdf', mock_file('blah', 123)
         )
 
         self.assertEqual(mock_bucket.keys, set([
             'folder/test-file.pdf',
-            'folder/OLD-test-file.pdf'
-        ]))
-
-    def test_move_existing_doesnt_delete_file(self):
-        mock_bucket = FakeBucket(['folder/test-file.odt'])
-        self.s3_mock.get_bucket.return_value = mock_bucket
-
-        S3('test-bucket')._move_existing(
-            existing_path='folder/test-file.odt',
-            move_prefix='OLD'
-        )
-
-        self.assertEqual(mock_bucket.keys, set([
-            'folder/test-file.odt',
-            'folder/OLD-test-file.odt'
         ]))
 
     def test_content_type_detection(self):
