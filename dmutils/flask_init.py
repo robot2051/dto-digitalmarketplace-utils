@@ -86,9 +86,14 @@ def init_manager(application, port, extra_directories=()):
     print("Watching {} extra files".format(len(extra_files)))
 
     manager.add_command(
-        "runserver",
+        "rundebugserver",
         Server(port=port, extra_files=extra_files)
     )
+
+    @manager.command
+    def runserver():
+        from waitress import serve
+        serve(application, port=port)
 
     @manager.command
     def list_routes():
