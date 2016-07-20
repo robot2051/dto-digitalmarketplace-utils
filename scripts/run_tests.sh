@@ -14,7 +14,7 @@ function display_result {
   fi
 }
 
-pep8 .
+pep8 --exclude venv .
 display_result $? 1 "Code style check"
 
 py.test $@
