@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import decimal
 import re
 
 
@@ -61,3 +62,24 @@ def normalise_abn(original_abn):
 
     abn = '{} {} {} {}'.format(abn[0:2], abn[2:5], abn[5:8], abn[8:11])
     return abn
+
+
+def parse_money(money_string):
+    """
+    Converts a string representation of money to a Python decimal.
+
+    E.g.:
+    '$5,200 ' -> 5200
+    ' 1.50' -> 1.5
+
+    Raises ValidationError on invalid format.
+    """
+    stripped = money_string.strip().replace(',', '')
+
+    if stripped.startswith('$'):
+        stripped = stripped[1:]
+
+    try:
+        return decimal.Decimal(stripped)
+    except decimal.InvalidOperation:
+        raise ValidationError('Invalid money format: {}'.format(money_string))

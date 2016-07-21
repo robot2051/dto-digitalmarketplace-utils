@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from dmutils.data_tools import ValidationError, normalise_abn, normalise_acn
+from dmutils.data_tools import ValidationError, normalise_abn, normalise_acn, parse_money
 
+import decimal
 import pytest
 from nose.tools import assert_equal, assert_in, assert_is_not_none, assert_true, assert_is
 
@@ -122,5 +123,33 @@ class TestNormaliseAbn(object):
                 normalise_abn(case)
             except ValidationError, e:
                 assert_in('Checksum failure', e.message)
+            else:
+                raise Exception('Test failed for case: {}'.format(case))
+
+
+class TestParseMoney(object):
+
+    def test_good_formats(self):
+        assert_equal(parse_money('1'), decimal.Decimal('1'))
+        assert_equal(parse_money('0'), decimal.Decimal('0'))
+        assert_equal(parse_money('1,000.20'), decimal.Decimal('1000.2'))
+        assert_equal(parse_money('$1,000.20'), decimal.Decimal('1000.2'))
+        assert_equal(parse_money('$1000.30'), decimal.Decimal('1000.3'))
+
+    def test_bad_formats(self):
+        cases = [
+            'no',
+            'free',
+            '$',
+            '$$0',
+            '1 2',
+            '1..2',
+            '+61 00 1234 5678',
+        ]
+        for case in cases:
+            try:
+                parse_money(case)
+            except ValidationError, e:
+                pass
             else:
                 raise Exception('Test failed for case: {}'.format(case))
