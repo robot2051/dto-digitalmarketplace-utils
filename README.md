@@ -4,6 +4,18 @@ Digital Marketplace utils
 [![Coverage Status](https://coveralls.io/repos/alphagov/digitalmarketplace-utils/badge.svg?branch=master&service=github)](https://coveralls.io/github/alphagov/digitalmarketplace-utils?branch=master)
 [![Requirements Status](https://requires.io/github/alphagov/digitalmarketplace-utils/requirements.svg?branch=master)](https://requires.io/github/alphagov/digitalmarketplace-utils/requirements/?branch=master)
 
+## Running Tests
+
+	# Initial install
+	virtualenv venv
+	pip install -r requirements_for_test.txt
+
+	# In every new shell
+	source venv/bin/activate
+
+	# Just run it
+	./script/run_tests
+
 ## What's in here?
 
 * Digital Marketplace API clients
