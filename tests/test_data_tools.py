@@ -15,11 +15,12 @@ class TestNormaliseAcn(object):
         golden = '004 085 616'
         cases = [
             '004 085 616',
+            '004-085-616',
             '004085616',
             ' 00    4085616 ',
             ' 004085616',
             ' 0 0 4 0 8 5 6 1 6 ',
-            ' 0 0  4 0 856 1 6 ',
+            ' 0-0  4-0 856 1 6 ',
         ]
         for case in cases:
             assert_equal(normalise_acn(case), golden)
@@ -72,10 +73,12 @@ class TestNormaliseAbn(object):
         golden = '28 799 046 203'
         cases = [
             '28 799 046 203',
+            '28-799-046-203',
             '28799046203',
             '28799 046 203',
             '  28 799 046203',
             '28 799046203           ',
+            '28-799046-203',
             '2 8 7 9 9 0 4 6 2 0 3 ',
         ]
         for case in cases:
