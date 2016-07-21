@@ -17,5 +17,5 @@ function display_result {
 pep8 --exclude venv .
 display_result $? 1 "Code style check"
 
-py.test $@
+py.test tests/ $@
 display_result $? 2 "Unit tests"

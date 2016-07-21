@@ -14,7 +14,7 @@ Digital Marketplace utils
 	source venv/bin/activate
 
 	# Just run it
-	./script/run_tests
+	./scripts/run_tests
 
 ## What's in here?
 
