@@ -20,9 +20,9 @@ requirements = list(parse_requirements('requirements.txt',
 install_requires = [str(r.req) for r in requirements]
 
 setup(
-    name='digitalmarketplace-utils',
+    name='dto-digitalmarketplace-utils',
     version=version,
-    url='https://github.com/alphagov/digitalmarketplace-utils',
+    url='https://github.com/ausdto/dto-digitalmarketplace-utils',
     license='MIT',
     author='GDS Developers',
     description='Common utils for Digital Marketplace apps.',
