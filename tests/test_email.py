@@ -4,13 +4,13 @@ import pytest
 import mock
 import six
 
+from botocore.exceptions import ClientError
 from datetime import datetime
 from itsdangerous import BadTimeSignature
-from mandrill import Error
 
 from dmutils.config import init_app
 from dmutils.email import (
-    generate_token, decode_token, send_email, MandrillException, hash_email,
+    generate_token, decode_token, send_email, EmailError, hash_email,
     token_created_before_password_last_changed,
     decode_invitation_token, decode_password_reset_token)
 from dmutils.formats import DATETIME_FORMAT
@@ -18,9 +18,9 @@ from .test_user import user_json
 
 
 @pytest.yield_fixture
-def mandrill():
-    with mock.patch('dmutils.email.Mandrill') as Mandrill:
-        instance = Mandrill.return_value
+def email_client():
+    with mock.patch('boto3.client') as boto_client:
+        instance = boto_client.return_value
         yield instance
 
 
@@ -34,133 +34,76 @@ def email_app(app):
     yield app
 
 
-def test_calls_send_email_with_correct_params(email_app, mandrill):
+def test_calls_send_email_with_correct_params(email_app, email_client):
     with email_app.app_context():
-
-        mandrill.messages.send.return_value = [
-            {'_id': '123', 'email': '123'}]
-
-        expected_call = {
-            'html': "body",
-            'subject': "subject",
-            'from_email': "from_email",
-            'from_name': "from_name",
-            'to': [{
-                'email': "email_address",
-                'type': 'to'
-            }],
-            'important': False,
-            'track_opens': False,
-            'track_clicks': False,
-            'auto_text': True,
-            'tags': ['password-resets'],
-            'headers': {'Reply-To': "from_email"},  # noqa
-            'preserve_recipients': False,
-            'recipient_metadata': [{
-                'rcpt': "email_address"
-            }]
-        }
-
         send_email(
             "email_address",
             "body",
-            "api_key",
             "subject",
             "from_email",
             "from_name",
-            ["password-resets"]
-
         )
 
-        mandrill.messages.send.assert_called_once_with(message=expected_call, async=True)
+    email_client.send_email.assert_called_once_with(
+        ReplyToAddresses=['from_email'],
+        Message={'Body': {'Html': {'Charset': 'UTF-8', 'Data': 'body'}},
+                 'Subject': {'Charset': 'UTF-8', 'Data': 'subject'}},
+        Destination={'ToAddresses': ['email_address']},
+        Source=u'from_name <from_email>'
+    )
 
 
-def test_calls_send_email_to_multiple_addresses(email_app, mandrill):
+def test_calls_send_email_to_multiple_addresses(email_app, email_client):
     with email_app.app_context():
-
-        mandrill.messages.send.return_value = [
-            {'_id': '123', 'email': '123'}]
-
         send_email(
             ["email_address1", "email_address2"],
             "body",
-            "api_key",
             "subject",
             "from_email",
             "from_name",
-            ["password-resets"]
-
         )
 
-        assert mandrill.messages.send.call_args[1]['message']['to'] == [
-            {'email': "email_address1", 'type': 'to'},
-            {'email': "email_address2", 'type': 'to'},
-        ]
-
-        assert mandrill.messages.send.call_args[1]['message']['recipient_metadata'] == [
-            {'rcpt': "email_address1"},
-            {'rcpt': "email_address2"},
+        assert email_client.send_email.call_args[1]['Destination']['ToAddresses'] == [
+            "email_address1",
+            "email_address2",
         ]
 
 
-def test_calls_send_email_with_alternative_reply_to(email_app, mandrill):
+def test_calls_send_email_with_alternative_reply_to(email_app, email_client):
     with email_app.app_context():
-        mandrill.messages.send.return_value = [
-            {'_id': '123', 'email': '123'}]
-
-        expected_call = {
-            'html': "body",
-            'subject': "subject",
-            'from_email': "from_email",
-            'from_name': "from_name",
-            'to': [{
-                'email': "email_address",
-                'type': 'to'
-            }],
-            'important': False,
-            'track_opens': False,
-            'track_clicks': False,
-            'auto_text': True,
-            'tags': ['password-resets'],
-            'headers': {'Reply-To': "reply_address"},
-            'preserve_recipients': False,
-            'recipient_metadata': [{
-                'rcpt': "email_address"
-            }]
-        }
-
         send_email(
             "email_address",
             "body",
-            "api_key",
             "subject",
             "from_email",
             "from_name",
-            ["password-resets"],
             reply_to="reply_address"
         )
 
-        mandrill.messages.send.assert_called_once_with(message=expected_call, async=True)
+    email_client.send_email.assert_called_once_with(
+        ReplyToAddresses=['reply_address'],
+        Message={'Body': {'Html': {'Charset': 'UTF-8', 'Data': 'body'}},
+                 'Subject': {'Charset': 'UTF-8', 'Data': 'subject'}},
+        Destination={'ToAddresses': ['email_address']},
+        Source=u'from_name <from_email>'
+    )
 
 
-def test_should_throw_exception_if_mandrill_fails(email_app, mandrill):
+def test_should_throw_exception_if_email_client_fails(email_app, email_client):
     with email_app.app_context():
 
-        mandrill.messages.send.side_effect = Error("this is an error")
+        email_client.send_email.side_effect = ClientError(
+            {'Error': {'Message': "this is an error"}}, ""
+        )
 
-        try:
+        with pytest.raises(EmailError):
             send_email(
                 "email_address",
                 "body",
-                "api_key",
                 "subject",
                 "from_email",
                 "from_name",
-                ["password-resets"]
-
             )
-        except MandrillException as e:
-            assert str(e) == "this is an error"
 
 
 def test_can_generate_token():

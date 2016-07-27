@@ -2,12 +2,13 @@ import base64
 import hashlib
 import six
 
+import boto3
+import botocore.exceptions
 from flask import current_app, flash
 from flask._compat import string_types
 
 from datetime import datetime
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
-from mandrill import Mandrill, Error
 
 from .formats import DATETIME_FORMAT
 
@@ -15,49 +16,43 @@ ONE_DAY_IN_SECONDS = 86400
 SEVEN_DAYS_IN_SECONDS = 604800
 
 
-class MandrillException(Exception):
+class EmailError(Exception):
     pass
 
 
-def send_email(to_email_addresses, email_body, api_key, subject, from_email, from_name, tags, reply_to=None):
+def send_email(to_email_addresses, email_body, subject, from_email, from_name, reply_to=None):
     if isinstance(to_email_addresses, string_types):
         to_email_addresses = [to_email_addresses]
 
     try:
-        mandrill_client = Mandrill(api_key)
+        email_client = boto3.client('ses')
 
-        message = {
-            'html': email_body,
-            'subject': subject,
-            'from_email': from_email,
-            'from_name': from_name,
-            'to': [{
-                'email': email_address,
-                'type': 'to'
-            } for email_address in to_email_addresses],
-            'important': False,
-            'track_opens': False,
-            'track_clicks': False,
-            'auto_text': True,
-            'tags': tags,
-            'headers': {'Reply-To': reply_to or from_email},
-            'preserve_recipients': False,
-            'recipient_metadata': [{
-                'rcpt': email_address
-            } for email_address in to_email_addresses]
-        }
+        result = email_client.send_email(
+            Source=u"{} <{}>".format(from_name, from_email),
+            Destination={
+                'ToAddresses': to_email_addresses
+            },
+            Message={
+                'Subject': {
+                    'Data': subject,
+                    'Charset': 'UTF-8'
+                },
+                'Body': {
+                    'Html': {
+                        'Data': email_body,
+                        'Charset': 'UTF-8'
+                    }
+                }
+            },
+            ReplyToAddresses=[reply_to or from_email],
+        )
+    except botocore.exceptions.ClientError as e:
+        current_app.logger.error("An SES error occurred: {error}", extra={'error': e.response['Error']['Message']})
+        raise EmailError(e.response['Error']['Message'])
 
-        result = mandrill_client.messages.send(message=message, async=True)
-    except Error as e:
-        # Mandrill errors are thrown as exceptions
-        current_app.logger.error("A mandrill error occurred: {error}",
-                                 extra={'error': e})
-        raise MandrillException(e)
-
-    current_app.logger.info("Sent {tags} response: id={id}, email={email_hash}",
-                            extra={'tags': tags,
-                                   'id': result[0]['_id'],
-                                   'email_hash': hash_email(result[0]['email'])})
+    current_app.logger.info("Sent email: id={id}, email={email_hash}",
+                            extra={'id': result['ResponseMetadata']['RequestId'],
+                                   'email_hash': hash_email(to_email_addresses[0])})
 
 
 def generate_token(data, secret_key, salt):
