@@ -17,15 +17,19 @@ class User():
         self.locked = locked
         self.active = active
 
+    @property
     def is_authenticated(self):
-        return self.is_active()
+        return self.is_active
 
+    @property
     def is_active(self):
         return self.active and not self.locked
 
+    @property
     def is_locked(self):
         return self.locked
 
+    @property
     def is_anonymous(self):
         return False
 
@@ -77,5 +81,5 @@ class User():
 
         if user_json:
             user = User.from_json(user_json)
-            if user.is_active():
+            if user.is_active:
                 return user
