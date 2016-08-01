@@ -56,8 +56,8 @@ def test_User_from_json():
     assert user.name == 'Name'
     assert user.role == 'admin'
     assert user.email_address == 'test@example.com'
-    assert not user.is_locked()
-    assert user.is_active()
+    assert not user.is_locked
+    assert user.is_active
 
 
 def test_User_from_json_with_supplier():
@@ -138,32 +138,32 @@ def test_user_is_active(user):
     user.active = True
     user.locked = False
 
-    assert user.is_active()
+    assert user.is_active
 
 
 def test_user_is_not_active_if_locked(user):
     user.active = True
     user.locked = True
 
-    assert not user.is_active()
+    assert not user.is_active
 
 
 def test_user_is_authenticated(user):
     user.active = True
     user.locked = False
 
-    assert user.is_authenticated()
+    assert user.is_authenticated
 
 
 def test_user_is_not_authenticated_if_not_active(user):
     user.active = False
     user.locked = False
 
-    assert not user.is_authenticated()
+    assert not user.is_authenticated
 
 
 def test_user_is_not_authenticated_if_locked(user):
     user.active = True
     user.locked = True
 
-    assert not user.is_authenticated()
+    assert not user.is_authenticated
