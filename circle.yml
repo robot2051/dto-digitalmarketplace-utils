@@ -1,0 +1,11 @@
+machine:
+  timezone:
+    Australia/Sydney
+
+dependencies:
+  pre:
+    - ./scripts/ci_build.sh
+
+test:
+  override:
+    - ./scripts/run_tests.sh
