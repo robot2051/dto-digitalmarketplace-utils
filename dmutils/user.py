@@ -1,3 +1,20 @@
+import hashlib
+import base64
+
+
+def hash_email(email):
+    m = hashlib.sha256()
+    m.update(email.encode('utf-8'))
+
+    return base64.urlsafe_b64encode(m.digest())
+
+
+def user_logging_string(user):
+    if user.is_anonymous:
+        return 'User(anonymous)'
+    return 'User(id={}, role={}, hashed_email={})'.format(user.id, user.role, hash_email(user.email_address))
+
+
 def user_has_role(user, role):
     try:
         return user['users']['role'] == role

@@ -1,6 +1,6 @@
 import mock
 import pytest
-from dmutils.user import user_has_role, User
+from dmutils.user import user_has_role, user_logging_string, User
 
 
 @pytest.fixture
@@ -24,6 +24,13 @@ def user_json():
             }
         }
     }
+
+
+def test_logging_string(user):
+    result = user_logging_string(user)
+    assert result
+    assert 'id=123' in result
+    assert 'role=supplier' in result
 
 
 def test_user_has_role():
