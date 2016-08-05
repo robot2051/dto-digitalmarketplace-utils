@@ -25,7 +25,7 @@ def init_app(app):
     def after_request(response):
         log_handler = current_app.extensions.get('request_log_handler', None)
         if log_handler:
-            log_handler()
+            log_handler(response)
         else:
             current_app.logger.info('{method} {url} {status}',
                                     extra={
