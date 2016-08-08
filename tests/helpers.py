@@ -37,5 +37,5 @@ class BaseApplicationTest(object):
         self.flask = Flask('test_app', template_folder='tests/templates/')
         self.login_manager = LoginManager()
         init_app(self.flask, Config)
-        init_frontend_app(self.flask, self.login_manager)
+        init_frontend_app(self.flask, None, self.login_manager)
         self.app = self.flask.test_client()

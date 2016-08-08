@@ -79,7 +79,7 @@ def init_app(
             **(application.config['BASE_TEMPLATE_DATA'] or {}))
 
 
-def init_frontend_app(application, login_manager):
+def init_frontend_app(application, data_api_client, login_manager):
 
     def request_log_handler(response):
         params = {
