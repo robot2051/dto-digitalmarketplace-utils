@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import re
 from markdown import markdown
 from flask import Markup
@@ -19,24 +20,28 @@ def smartjoin(input):
 
 def format_links(text):
     url_match = re.compile(r"""(
-                                (?:https?://|www\.)       # start with http:// or www.
-                                (?:[^\s/?\.#<>"']+\.?)+   # first part of host name
-                                \.                        # match dot in host name
-                                (?:[^\s/?\.#<>"']+\.?)+   # match rest of domain
-                                (?:/[^\s<>"']*)?          # rest of url
-                                [^\s<>"'\.]               # no dot at end
+                                (?:https?://|www\.)    # start with http:// or www.
+                                (?:[^\s<>"'/?#]+)      # domain doesn't have these characters
+                                (?:[^\s<>"']+)         # post-domain part of URL doesn't have these characters
+                                [^\s<>,"'\.]           # no dot at end
                                 )""", re.X)
-    matches = url_match.findall(text)
-    link = '{0}<a href={1} rel="external">{1}</a>'
-    if matches:
-        textArray = url_match.split(text)
-        formattedText = ""
-        for text in textArray:
-            if text in matches:
-                formattedText = link.format(formattedText, Markup.escape(text))
+    matched_urls = url_match.findall(text)
+    if matched_urls:
+        link = '<a href="{0}" class="break-link" rel="external">{0}</a>'
+        plaintext_link = '<span class="break-link">{0}</span>'
+        text_array = url_match.split(text)
+        formatted_text_array = []
+        for partial_text in text_array:
+            if partial_text in matched_urls:
+                if partial_text.startswith('www'):
+                    url = plaintext_link.format(Markup.escape(partial_text))
+                else:
+                    url = link.format(Markup.escape(partial_text))
+                formatted_text_array.append(url)
             else:
-                formattedText = '{}{}'.format(formattedText, Markup.escape(text))
-        formattedText = Markup(formattedText)
-        return formattedText
+                partial_text = Markup.escape(partial_text)
+                formatted_text_array.append(partial_text)
+        formatted_text = Markup(''.join(formatted_text_array))
+        return formatted_text
     else:
         return text

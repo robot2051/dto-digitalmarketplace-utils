@@ -9,14 +9,14 @@ from .helpers import mock_file
 from dmutils.s3 import S3ResponseError
 
 from dmutils.documents import (
-    generate_file_name,
+    generate_file_name, get_extension,
     file_is_not_empty, file_is_empty, filter_empty_files,
     file_is_less_than_5mb,
     file_is_open_document_format,
     validate_documents,
     upload_document, upload_service_documents,
     get_signed_url, get_agreement_document_path, get_document_path,
-    sanitise_supplier_name, file_is_pdf, file_is_zip,
+    sanitise_supplier_name, file_is_pdf, file_is_zip, file_is_image,
     file_is_csv)
 
 
@@ -41,6 +41,15 @@ class TestGenerateFilename(unittest.TestCase):
 
 
 class TestValidateDocuments(unittest.TestCase):
+    def test_get_extension(self):
+        assert get_extension('what.jpg') == '.jpg'
+        assert get_extension('what the.jpg') == '.jpg'
+        assert get_extension('what.the.jpg') == '.jpg'
+        assert get_extension('what.the..jpg') == '.jpg'
+        assert get_extension('what.the.🐈.jpg') == '.jpg'
+        assert get_extension('what.the.🐈jpg') == '.🐈jpg'
+        assert get_extension('ಠ▃ಠ.jpg') == '.jpg'
+
     def test_file_is_not_empty(self):
         non_empty_file = mock_file('file1', 1)
         assert file_is_not_empty(non_empty_file)
@@ -83,6 +92,12 @@ class TestValidateDocuments(unittest.TestCase):
     def test_file_is_zip(self):
         self.assertTrue(file_is_zip(mock_file('file.zip', 1)))
         self.assertFalse(file_is_zip(mock_file('file.sit', 1)))
+
+    def test_file_is_image(self):
+        self.assertTrue(file_is_image(mock_file('file.jpg', 1)))
+        self.assertTrue(file_is_image(mock_file('file.jpeg', 1)))
+        self.assertTrue(file_is_image(mock_file('file.png', 1)))
+        self.assertFalse(file_is_image(mock_file('file.pdf', 1)))
 
     def test_validate_documents(self):
         self.assertEqual(

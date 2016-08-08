@@ -2,4 +2,4 @@
 *.pyc
 *.swp
 venv/
-.cache/
+.cache

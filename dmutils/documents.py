@@ -16,6 +16,7 @@ RESULT_LETTER_FILENAME = 'result-letter.pdf'
 AGREEMENT_FILENAME = 'framework-agreement.pdf'
 SIGNED_AGREEMENT_PREFIX = 'signed-framework-agreement'
 COUNTERSIGNED_AGREEMENT_FILENAME = 'countersigned-framework-agreement.pdf'
+SIGNATURE_PAGE_FILENAME = 'signature-page.pdf'
 
 
 def filter_empty_files(files):
@@ -153,7 +154,7 @@ def file_is_pdf(file_object):
 
 
 def file_is_csv(file_object):
-    """Checks file extension as being PDF."""
+    """Checks file extension as being CSV."""
     return get_extension(file_object.filename) in [
         ".csv"
     ]
@@ -163,6 +164,13 @@ def file_is_zip(file_object):
     """Checks file extension as being ZIP."""
     return get_extension(file_object.filename) in [
         ".zip"
+    ]
+
+
+def file_is_image(file_object):
+    """Checks file extension as being JPG. or PNG."""
+    return get_extension(file_object.filename) in [
+        ".jpg", ".jpeg", ".png"
     ]
 
 
