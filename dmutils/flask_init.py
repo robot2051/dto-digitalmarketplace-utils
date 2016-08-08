@@ -5,7 +5,7 @@ from flask import Markup, redirect, request, session
 from flask.ext.script import Manager, Server
 from flask_login import current_user
 
-from user import User
+from user import User, user_logging_string
 
 
 def init_app(
@@ -80,6 +80,17 @@ def init_app(
 
 
 def init_frontend_app(application, login_manager):
+
+    def request_log_handler(response):
+        params = {
+            'method': request.method,
+            'url': request.url,
+            'status': response.status_code,
+            'user': user_logging_string(current_user),
+        }
+        application.logger.info('{method} {url} {status} {user}', extra=params)
+    application.extensions['request_log_handler'] = request_log_handler
+
     @login_manager.user_loader
     def load_user(user_id):
         return User.load_user(data_api_client, user_id)
