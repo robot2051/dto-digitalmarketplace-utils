@@ -7,10 +7,11 @@ pyyaml==3.11
 python-json-logger==0.1.4
 inflection==0.2.1
 Flask-FeatureFlags==0.6
+Flask-Login==0.3.2
 monotonic==0.3
 pytz==2015.4
-Flask-WTF==0.12
 markdown==2.6.2
+WTForms==2.1
 Flask-Script==2.0.5
 waitress==0.9.0
 workdays==1.4
