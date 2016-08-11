@@ -54,24 +54,6 @@ def init_app(
         response.headers['X-Frame-Options'] = 'DENY'
         return response
 
-    @application.after_request
-    def add_cache_control(response):
-        if request.method != 'GET' or response.status_code in (301, 302):
-            return response
-
-        vary = response.headers.get('Vary', None)
-        if vary:
-            response.headers['Vary'] = vary + ', Cookie'
-        else:
-            response.headers['Vary'] = 'Cookie'
-
-        if current_user.is_authenticated:
-            response.cache_control.private = True
-        if response.cache_control.max_age is None:
-            response.cache_control.max_age = application.config['DM_DEFAULT_CACHE_MAX_AGE']
-
-        return response
-
     @application.context_processor
     def inject_global_template_variables():
         return dict(
@@ -113,6 +95,24 @@ def init_frontend_app(application, data_api_client, login_manager):
                 )
             else:
                 return redirect(request.path[:-1], code=301)
+
+    @application.after_request
+    def add_cache_control(response):
+        if request.method != 'GET' or response.status_code in (301, 302):
+            return response
+
+        vary = response.headers.get('Vary', None)
+        if vary:
+            response.headers['Vary'] = vary + ', Cookie'
+        else:
+            response.headers['Vary'] = 'Cookie'
+
+        if current_user.is_authenticated:
+            response.cache_control.private = True
+        if response.cache_control.max_age is None:
+            response.cache_control.max_age = application.config['DM_DEFAULT_CACHE_MAX_AGE']
+
+        return response
 
     @application.template_filter('markdown')
     def markdown_filter_flask(data):
