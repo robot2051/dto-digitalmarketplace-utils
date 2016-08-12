@@ -3,15 +3,29 @@ from functools import wraps
 import re
 
 from flask import abort, current_app, render_template, request, Response, session
+from jinja2.filters import do_striptags
 from wtforms import Form, StringField
 from wtforms.csrf.core import CSRF
 from wtforms.csrf.session import SessionCSRF
-from wtforms.validators import Regexp
+from wtforms.validators import Regexp, ValidationError
 
 
 email_regex = Regexp(r'^[^@^\s]+@[\d\w-]+(\.[\d\w-]+)+$',
                      flags=re.UNICODE,
                      message='You must provide a valid email address')
+
+
+def is_government_email(data_api_client):
+    """
+    Returns a WTForms validator that uses the api to check the email against a government domain whitelist.
+    """
+    def validator(form, field):
+        email_regex(form, field)
+        if not data_api_client.is_email_address_with_valid_buyer_domain(field.data):
+            # wtforms wraps the label in a <label> tag
+            label = do_striptags(field.label)
+            raise ValidationError('{} needs to be a government email address'.format(label))
+    return validator
 
 
 class StripWhitespaceStringField(StringField):
