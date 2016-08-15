@@ -10,27 +10,33 @@ from wtforms.csrf.session import SessionCSRF
 from wtforms.validators import Regexp, ValidationError
 
 
-email_regex = Regexp(r'^[^@^\s]+@[\d\w-]+(\.[\d\w-]+)+$',
-                     flags=re.UNICODE,
-                     message='You must provide a valid email address')
+email_validator = Regexp(r'^[^@^\s]+@[\d\w-]+(\.[\d\w-]+)+$',
+                         flags=re.UNICODE,
+                         message='You must provide a valid email address')
 
 
-def is_government_email(data_api_client):
+_BUYER_EMAIL_DOMAINS = [l.strip() for l in open('./data/buyer-email-domains.txt', 'rt')]
+
+
+def is_government_email(email_address):
+    domain = email_address.split('@')[-1]
+    return any(domain == d or domain.endswith('.' + d) for d in _BUYER_EMAIL_DOMAINS)
+
+
+def government_email_validator(form, field):
     """
-    Returns a WTForms validator that uses the api to check the email against a government domain whitelist.
+    A WTForms validator that uses the api to check the email against a government domain whitelist.
 
     Adds a flag 'non_gov' to the field for detecting if the user needs to be warned about a government email
     restriction.  This flag is only true if the given email address is known to be non-government (and not just typoed).
     """
-    def validator(form, field):
-        setattr(field.flags, 'non_gov', False)
-        email_regex(form, field)
-        if not data_api_client.is_email_address_with_valid_buyer_domain(field.data):
-            setattr(field.flags, 'non_gov', True)
-            # wtforms wraps the label in a <label> tag
-            label = do_striptags(field.label)
-            raise ValidationError('{} needs to be a government email address'.format(label))
-    return validator
+    setattr(field.flags, 'non_gov', False)
+    email_validator(form, field)
+    if not is_government_email(field.data):
+        setattr(field.flags, 'non_gov', True)
+        # wtforms wraps the label in a <label> tag
+        label = do_striptags(field.label)
+        raise ValidationError('{} needs to be a government email address'.format(label))
 
 
 class StripWhitespaceStringField(StringField):

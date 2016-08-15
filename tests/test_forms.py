@@ -1,16 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from dmutils.forms import (
-    DmForm, email_regex, FakeCsrf, is_government_email, render_template_with_csrf, StripWhitespaceStringField
+    DmForm, email_validator, FakeCsrf, government_email_validator, render_template_with_csrf, StripWhitespaceStringField
 )
 
 from helpers import BaseApplicationTest
-
-
-class FakeDataApiClient(object):
-
-    def is_email_address_with_valid_buyer_domain(self, email_address):
-        return email_address and email_address.endswith('gov.au')
 
 
 class TestForm(DmForm):
@@ -18,7 +12,7 @@ class TestForm(DmForm):
     buyer_email = StripWhitespaceStringField(
         'Buyer email address', id='buyer_email',
         validators=[
-            is_government_email(FakeDataApiClient())
+            government_email_validator,
         ]
     )
 
@@ -94,7 +88,7 @@ def test_valid_email_formats():
         'good@hyphenated-subdomain.example.com',
     ]
     for address in cases:
-        assert email_regex.regex.match(address) is not None, address
+        assert email_validator.regex.match(address) is not None, address
 
 
 def test_invalid_email_formats():
@@ -113,4 +107,4 @@ def test_invalid_email_formats():
         'bad@example.com,other.example.com',
     ]
     for address in cases:
-        assert email_regex.regex.match(address) is None, address
+        assert email_validator.regex.match(address) is None, address
