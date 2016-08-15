@@ -1,6 +1,9 @@
 import base64
 import hashlib
 import six
+from string import Template
+import sys
+import textwrap
 
 import boto3
 import botocore.exceptions
@@ -24,31 +27,47 @@ def send_email(to_email_addresses, email_body, subject, from_email, from_name, r
     if isinstance(to_email_addresses, string_types):
         to_email_addresses = [to_email_addresses]
 
-    try:
-        email_client = boto3.client('ses')
+    if current_app.config.get('DM_SEND_EMAIL_TO_STDERR', False):
+        template = Template(textwrap.dedent("""\
+            To: $to
+            Subject: $subject
+            From: $from_line
+            Reply-To: $reply_to
 
-        result = email_client.send_email(
-            Source=u"{} <{}>".format(from_name, from_email),
-            Destination={
-                'ToAddresses': to_email_addresses
-            },
-            Message={
-                'Subject': {
-                    'Data': subject,
-                    'Charset': 'UTF-8'
+            $body"""))
+        sys.stderr.write(template.substitute(
+            to=', '.join(to_email_addresses),
+            subject=subject,
+            from_line='{} <{}>'.format(from_name, from_email),
+            reply_to=reply_to,
+            body=email_body
+        ))
+    else:
+        try:
+            email_client = boto3.client('ses')
+
+            result = email_client.send_email(
+                Source=u"{} <{}>".format(from_name, from_email),
+                Destination={
+                    'ToAddresses': to_email_addresses
                 },
-                'Body': {
-                    'Html': {
-                        'Data': email_body,
+                Message={
+                    'Subject': {
+                        'Data': subject,
                         'Charset': 'UTF-8'
+                    },
+                    'Body': {
+                        'Html': {
+                            'Data': email_body,
+                            'Charset': 'UTF-8'
+                        }
                     }
-                }
-            },
-            ReplyToAddresses=[reply_to or from_email],
-        )
-    except botocore.exceptions.ClientError as e:
-        current_app.logger.error("An SES error occurred: {error}", extra={'error': e.response['Error']['Message']})
-        raise EmailError(e.response['Error']['Message'])
+                },
+                ReplyToAddresses=[reply_to or from_email],
+            )
+        except botocore.exceptions.ClientError as e:
+            current_app.logger.error("An SES error occurred: {error}", extra={'error': e.response['Error']['Message']})
+            raise EmailError(e.response['Error']['Message'])
 
     current_app.logger.info("Sent email: id={id}, email={email_hash}",
                             extra={'id': result['ResponseMetadata']['RequestId'],
