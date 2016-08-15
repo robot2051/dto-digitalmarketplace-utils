@@ -18,10 +18,15 @@ email_regex = Regexp(r'^[^@^\s]+@[\d\w-]+(\.[\d\w-]+)+$',
 def is_government_email(data_api_client):
     """
     Returns a WTForms validator that uses the api to check the email against a government domain whitelist.
+
+    Adds a flag 'non_gov' to the field for detecting if the user needs to be warned about a government email
+    restriction.  This flag is only true if the given email address is known to be non-government (and not just typoed).
     """
     def validator(form, field):
+        setattr(field.flags, 'non_gov', False)
         email_regex(form, field)
         if not data_api_client.is_email_address_with_valid_buyer_domain(field.data):
+            setattr(field.flags, 'non_gov', True)
             # wtforms wraps the label in a <label> tag
             label = do_striptags(field.label)
             raise ValidationError('{} needs to be a government email address'.format(label))

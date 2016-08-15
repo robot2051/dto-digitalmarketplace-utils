@@ -40,6 +40,7 @@ class TestFormHandling(BaseApplicationTest):
         with self.flask.app_context():
             form = self.build_form()
             assert form.validate()
+            assert not form.buyer_email.flags.non_gov
 
     def test_whitespace_stripping(self):
         with self.flask.app_context():
@@ -53,6 +54,7 @@ class TestFormHandling(BaseApplicationTest):
             assert not form.validate()
             assert 'buyer_email' in form.errors
             assert 'valid' in form.errors['buyer_email'][0]
+            assert not form.buyer_email.flags.non_gov
 
     def test_non_gov_email(self):
         with self.flask.app_context():
@@ -60,6 +62,7 @@ class TestFormHandling(BaseApplicationTest):
             assert not form.validate()
             assert 'buyer_email' in form.errors
             assert 'government' in form.errors['buyer_email'][0]
+            assert form.buyer_email.flags.non_gov
 
     def test_csrf_protection(self):
         with self.flask.app_context():
