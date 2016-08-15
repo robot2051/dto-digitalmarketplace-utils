@@ -1,31 +1,78 @@
 # -*- coding: utf-8 -*-
 
-from dmutils.forms import DmForm, email_regex, FakeCsrf, render_template_with_csrf, StripWhitespaceStringField
+from dmutils.forms import (
+    DmForm, email_regex, FakeCsrf, is_government_email, render_template_with_csrf, StripWhitespaceStringField
+)
 
 from helpers import BaseApplicationTest
 
 
+class FakeDataApiClient(object):
+
+    def is_email_address_with_valid_buyer_domain(self, email_address):
+        return email_address and email_address.endswith('gov.au')
+
+
 class TestForm(DmForm):
     stripped_field = StripWhitespaceStringField('Stripped', id='stripped_field')
+    buyer_email = StripWhitespaceStringField(
+        'Buyer email address', id='buyer_email',
+        validators=[
+            is_government_email(FakeDataApiClient())
+        ]
+    )
 
 
 class TestFormHandling(BaseApplicationTest):
 
+    complete_form_data = {
+        'csrf_token': FakeCsrf.valid_token,
+        'stripped_field': '',
+        'buyer_email': 'asdf@example.gov.au',
+    }
+
+    def build_form(self, **kwargs):
+        data = dict(self.complete_form_data)
+        data.update(**kwargs)
+        return TestForm(**data)
+
+    def test_valid_form(self):
+        with self.flask.app_context():
+            form = self.build_form()
+            assert form.validate()
+            assert not form.buyer_email.flags.non_gov
+
     def test_whitespace_stripping(self):
         with self.flask.app_context():
-            form = TestForm(stripped_field='  asdf ', csrf_token=FakeCsrf.valid_token)
+            form = self.build_form(stripped_field='  asdf ')
             assert form.validate()
             assert form.stripped_field.data == 'asdf'
 
+    def test_invalid_email(self):
+        with self.flask.app_context():
+            form = self.build_form(buyer_email='@@@')
+            assert not form.validate()
+            assert 'buyer_email' in form.errors
+            assert 'valid' in form.errors['buyer_email'][0]
+            assert not form.buyer_email.flags.non_gov
+
+    def test_non_gov_email(self):
+        with self.flask.app_context():
+            form = self.build_form(buyer_email='valid@example.com')
+            assert not form.validate()
+            assert 'buyer_email' in form.errors
+            assert 'government' in form.errors['buyer_email'][0]
+            assert form.buyer_email.flags.non_gov
+
     def test_csrf_protection(self):
         with self.flask.app_context():
-            form = TestForm(stripped_field='asdf', csrf_token='bad')
+            form = self.build_form(csrf_token='bad')
             assert not form.validate()
             assert 'csrf_token' in form.errors
 
     def test_does_not_crash_on_missing_csrf_token(self):
         with self.flask.app_context():
-            form = TestForm(stripped_field='asdf')
+            form = TestForm(csrf_token=None)
             assert not form.validate()
             assert 'csrf_token' in form.errors
 
