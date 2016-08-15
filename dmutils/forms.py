@@ -15,12 +15,15 @@ email_validator = Regexp(r'^[^@^\s]+@[\d\w-]+(\.[\d\w-]+)+$',
                          message='You must provide a valid email address')
 
 
-_BUYER_EMAIL_DOMAINS = [l.strip() for l in open('./data/buyer-email-domains.txt', 'rt')]
+_GOV_EMAIL_DOMAINS = [
+    'gov.au',
+    'digital.cabinet-office.gov.uk',
+]
 
 
 def is_government_email(email_address):
     domain = email_address.split('@')[-1]
-    return any(domain == d or domain.endswith('.' + d) for d in _BUYER_EMAIL_DOMAINS)
+    return any(domain == d or domain.endswith('.' + d) for d in _GOV_EMAIL_DOMAINS)
 
 
 def government_email_validator(form, field):
