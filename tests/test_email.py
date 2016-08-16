@@ -218,7 +218,7 @@ def test_decode_invitation_token_decodes_ok_for_buyer(email_app):
 
 def test_decode_invitation_token_decodes_ok_for_supplier(email_app):
     with email_app.app_context():
-        data = {'email_address': 'test-user@email.com', 'supplier_id': 1234, 'supplier_name': 'A. Supplier'}
+        data = {'email_address': 'test-user@email.com', 'supplier_code': 1234, 'supplier_name': 'A. Supplier'}
         token = generate_token(data, 'Key', 'Salt')
         assert decode_invitation_token(token, role='supplier') == data
 

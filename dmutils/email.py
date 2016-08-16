@@ -129,7 +129,7 @@ def decode_password_reset_token(token, data_api_client):
 
 
 def decode_invitation_token(encoded_token, role):
-    required_fields = ['email_address', 'supplier_id', 'supplier_name'] if role == 'supplier' else ['email_address']
+    required_fields = ['email_address', 'supplier_code', 'supplier_name'] if role == 'supplier' else ['email_address']
     try:
         token, timestamp = decode_token(
             encoded_token,
