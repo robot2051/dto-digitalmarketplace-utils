@@ -61,7 +61,7 @@ def upload_document(uploader, documents_url, service, field, file_contents, publ
     :param uploader: S3 uploader object
     :param documents_url: base assets URL used as root for creating the full
                           document URL.
-    :param service: service object used to look up service and supplier id
+    :param service: service object used to look up service and supplier code
                     for the generated document name
     :param field: name of the service field that the document URL is saved to,
                   used to generate the document name
@@ -78,7 +78,7 @@ def upload_document(uploader, documents_url, service, field, file_contents, publ
     file_path = generate_file_name(
         service['frameworkSlug'],
         uploader.bucket_short_name,
-        service['supplierId'],
+        service['supplierCode'],
         service['id'],
         field,
         file_contents.filename
@@ -174,7 +174,7 @@ def file_is_image(file_object):
     ]
 
 
-def generate_file_name(framework_slug, bucket_short_name, supplier_id, service_id, field, filename, suffix=None):
+def generate_file_name(framework_slug, bucket_short_name, supplier_code, service_id, field, filename, suffix=None):
     if suffix is None:
         suffix = default_file_suffix()
 
@@ -188,7 +188,7 @@ def generate_file_name(framework_slug, bucket_short_name, supplier_id, service_i
     return '{}/{}/{}/{}-{}-{}{}'.format(
         framework_slug,
         bucket_short_name,
-        supplier_id,
+        supplier_code,
         service_id,
         ID_TO_FILE_NAME_SUFFIX[field],
         suffix,

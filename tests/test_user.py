@@ -19,7 +19,7 @@ def user_json():
             "locked": False,
             "active": True,
             "supplier": {
-                "supplierId": 321,
+                "supplierCode": 321,
                 "name": "test supplier",
             }
         }
@@ -76,7 +76,7 @@ def test_User_from_json_with_supplier():
         'locked': False,
         'active': True,
         'supplier': {
-            'supplierId': 321,
+            'supplierCode': 321,
             'name': 'test supplier',
         }
     }})
@@ -84,7 +84,7 @@ def test_User_from_json_with_supplier():
     assert user.name == 'Name'
     assert user.role == 'supplier'
     assert user.email_address == 'test@example.com'
-    assert user.supplier_id == 321
+    assert user.supplier_code == 321
     assert user.supplier_name == 'test supplier'
 
 
