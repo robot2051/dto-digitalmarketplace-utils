@@ -145,7 +145,7 @@ class TestUploadDocument(unittest.TestCase):
                 upload_document(
                     uploader,
                     'http://assets',
-                    {'id': "123", 'supplierId': 5, 'frameworkSlug': 'g-cloud-6'},
+                    {'id': "123", 'supplierCode': 5, 'frameworkSlug': 'g-cloud-6'},
                     "pricingDocumentURL",
                     mock_file('file.pdf', 1)
                 ),
@@ -165,7 +165,7 @@ class TestUploadDocument(unittest.TestCase):
                 upload_document(
                     uploader,
                     'http://assets',
-                    {'id': "123", 'supplierId': 5, 'frameworkSlug': 'g-cloud-6'},
+                    {'id': "123", 'supplierCode': 5, 'frameworkSlug': 'g-cloud-6'},
                     "pricingDocumentURL",
                     mock_file('file.pdf', 1),
                     public=False
@@ -186,7 +186,7 @@ class TestUploadDocument(unittest.TestCase):
             self.assertFalse(upload_document(
                 uploader,
                 'http://assets',
-                {'id': "123", 'supplierId': 5, 'frameworkSlug': 'g-cloud-6'},
+                {'id': "123", 'supplierCode': 5, 'frameworkSlug': 'g-cloud-6'},
                 "pricingDocumentURL",
                 mock_file('file.pdf', 1)
             ))
@@ -198,7 +198,7 @@ class TestUploadDocument(unittest.TestCase):
                 upload_document(
                     uploader,
                     'http://assets',
-                    {'id': "123", 'supplierId': 5, 'frameworkSlug': 'g-cloud-6'},
+                    {'id': "123", 'supplierCode': 5, 'frameworkSlug': 'g-cloud-6'},
                     "pricingDocumentURL",
                     mock_file('file.pdf', 1)
                 ),
@@ -218,7 +218,7 @@ class TestUploadDocument(unittest.TestCase):
                 upload_document(
                     uploader,
                     'http://assets',
-                    {'id': "123", 'supplierId': 5, 'frameworkSlug': 'g-cloud-6'},
+                    {'id': "123", 'supplierCode': 5, 'frameworkSlug': 'g-cloud-6'},
                     "pricingDocumentURL",
                     mock_file('file.pdf', 1)
                 ),
@@ -234,7 +234,7 @@ class TestUploadServiceDocuments(object):
         self.section.get_question_ids.return_value = ['pricingDocumentURL']
         self.service = {
             'frameworkSlug': 'g-cloud-7',
-            'supplierId': '12345',
+            'supplierCode': '12345',
             'id': '654321',
         }
         self.uploader = mock.Mock(bucket_short_name='documents')
