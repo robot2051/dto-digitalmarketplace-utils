@@ -69,9 +69,9 @@ def send_email(to_email_addresses, email_body, subject, from_email, from_name, r
             current_app.logger.error("An SES error occurred: {error}", extra={'error': e.response['Error']['Message']})
             raise EmailError(e.response['Error']['Message'])
 
-    current_app.logger.info("Sent email: id={id}, email={email_hash}",
-                            extra={'id': result['ResponseMetadata']['RequestId'],
-                                   'email_hash': hash_email(to_email_addresses[0])})
+        current_app.logger.info("Sent email: id={id}, email={email_hash}",
+                                extra={'id': result['ResponseMetadata']['RequestId'],
+                                       'email_hash': hash_email(to_email_addresses[0])})
 
 
 def generate_token(data, secret_key, salt):
