@@ -6,15 +6,15 @@ import six
 
 from botocore.exceptions import ClientError
 from datetime import datetime
-from itsdangerous import BadTimeSignature
 
 from dmutils.config import init_app
 from dmutils.email import (
-    generate_token, decode_token, send_email, EmailError, hash_email,
-    token_created_before_password_last_changed,
-    decode_invitation_token, decode_password_reset_token)
+    generate_token, decode_token, send_email, EmailError, hash_email, decode_invitation_token,
+    decode_password_reset_token, parse_fernet_timestamp, InvalidToken)
 from dmutils.formats import DATETIME_FORMAT
 from .test_user import user_json
+
+TEST_SECRET_KEY = 'TestKeyTestKeyTestKeyTestKeyTestKeyTestKeyX='
 
 
 @pytest.yield_fixture
@@ -27,9 +27,9 @@ def email_client():
 @pytest.yield_fixture
 def email_app(app):
     init_app(app)
-    app.config['SHARED_EMAIL_KEY'] = "Key"
+    app.config['SHARED_EMAIL_KEY'] = TEST_SECRET_KEY
     app.config['INVITE_EMAIL_SALT'] = "Salt"
-    app.config['SECRET_KEY'] = "Secret"
+    app.config['SECRET_KEY'] = TEST_SECRET_KEY
     app.config["RESET_PASSWORD_SALT"] = "PassSalt"
     yield app
 
@@ -110,38 +110,44 @@ def test_can_generate_token():
     token = generate_token({
         "key1": "value1",
         "key2": "value2"},
-        secret_key="1234567890",
+        secret_key=TEST_SECRET_KEY,
         salt="1234567890")
 
-    token, timestamp = decode_token(token, "1234567890", "1234567890")
+    token = decode_token(token, TEST_SECRET_KEY, '1234567890')
     assert {
         "key1": "value1",
         "key2": "value2"} == token
-    assert timestamp
+
+
+def test_parse_timestamp_from_token():
+    test_time = datetime(2000, 1, 1)
+    with freeze_time(test_time):
+        data = {}
+        token = generate_token(data, TEST_SECRET_KEY, 'PassSalt')
+    timestamp = parse_fernet_timestamp(token)
+    assert timestamp == test_time
 
 
 def test_cant_decode_token_with_wrong_salt():
     token = generate_token({
         "key1": "value1",
         "key2": "value2"},
-        secret_key="1234567890",
+        secret_key=TEST_SECRET_KEY,
         salt="1234567890")
 
-    with pytest.raises(BadTimeSignature) as error:
-        decode_token(token, "1234567890", "failed")
-    assert "does not match" in str(error.value)
+    with pytest.raises(InvalidToken) as error:
+        decode_token(token, TEST_SECRET_KEY, 'wrong salt')
 
 
 def test_cant_decode_token_with_wrong_key():
     token = generate_token({
         "key1": "value1",
         "key2": "value2"},
-        secret_key="1234567890",
+        secret_key=TEST_SECRET_KEY,
         salt="1234567890")
 
-    with pytest.raises(BadTimeSignature) as error:
-        decode_token(token, "failed", "1234567890")
-    assert "does not match" in str(error.value)
+    with pytest.raises(InvalidToken) as error:
+        decode_token(token, 'WrongKeyWrongKeyWrongKeyWrongKeyWrongKeyXXX=', '1234567890')
 
 
 def test_hash_email():
@@ -161,7 +167,7 @@ def test_decode_password_reset_token_ok_for_good_token(email_app):
     data_api_client.get_user.return_value = user
     with email_app.app_context():
         data = {'user': 'test@example.com'}
-        token = generate_token(data, 'Secret', 'PassSalt')
+        token = generate_token(data, TEST_SECRET_KEY, 'PassSalt')
         assert decode_password_reset_token(token, data_api_client) == data
 
 
@@ -171,7 +177,7 @@ def test_decode_password_reset_token_does_not_work_if_bad_token(email_app):
     data_api_client = mock.Mock()
     data_api_client.get_user.return_value = user
     data = {'user': 'test@example.com'}
-    token = generate_token(data, 'Secret', 'PassSalt')[1:]
+    token = generate_token(data, TEST_SECRET_KEY, 'PassSalt')[1:]
 
     with email_app.app_context():
         assert decode_password_reset_token(token, data_api_client) == {'error': 'token_invalid'}
@@ -185,11 +191,11 @@ def test_decode_password_reset_token_does_not_work_if_token_expired(email_app):
     with freeze_time('2015-01-02 03:04:05'):
         # Token was generated a year before current time
         data = {'user': 'test@example.com'}
-        token = generate_token(data, 'Secret', 'PassSalt')
+        token = generate_token(data, TEST_SECRET_KEY, 'PassSalt')
 
     with freeze_time('2016-01-02 03:04:05'):
         with email_app.app_context():
-            assert decode_password_reset_token(token, data_api_client) == {'error': 'token_expired'}
+            assert decode_password_reset_token(token, data_api_client) == {'error': 'token_invalid'}
 
 
 def test_decode_password_reset_token_does_not_work_if_password_changed_later_than_token(email_app):
@@ -201,7 +207,7 @@ def test_decode_password_reset_token_does_not_work_if_password_changed_later_tha
     with freeze_time('2016-01-01T12:00:00.30Z'):
         # Token was generated an hour earlier than password was changed
         data = {'user': 'test@example.com'}
-        token = generate_token(data, 'Secret', 'PassSalt')
+        token = generate_token(data, TEST_SECRET_KEY, 'PassSalt')
 
     with freeze_time('2016-01-01T14:00:00.30Z'):
         # Token is two hours old; password was changed an hour ago
@@ -212,21 +218,21 @@ def test_decode_password_reset_token_does_not_work_if_password_changed_later_tha
 def test_decode_invitation_token_decodes_ok_for_buyer(email_app):
     with email_app.app_context():
         data = {'email_address': 'test-user@email.com'}
-        token = generate_token(data, 'Key', 'Salt')
+        token = generate_token(data, TEST_SECRET_KEY, 'Salt')
         assert decode_invitation_token(token, role='buyer') == data
 
 
 def test_decode_invitation_token_decodes_ok_for_supplier(email_app):
     with email_app.app_context():
         data = {'email_address': 'test-user@email.com', 'supplier_code': 1234, 'supplier_name': 'A. Supplier'}
-        token = generate_token(data, 'Key', 'Salt')
+        token = generate_token(data, TEST_SECRET_KEY, 'Salt')
         assert decode_invitation_token(token, role='supplier') == data
 
 
 def test_decode_invitation_token_does_not_work_if_there_are_missing_keys(email_app):
     with email_app.app_context():
         data = {'email_address': 'test-user@email.com', 'supplier_name': 'A. Supplier'}
-        token = generate_token(data, email_app.config['SHARED_EMAIL_KEY'], email_app.config['INVITE_EMAIL_SALT'])
+        token = generate_token(data, TEST_SECRET_KEY, email_app.config['INVITE_EMAIL_SALT'])
 
         assert decode_invitation_token(token, role='supplier') is None
 
@@ -234,7 +240,7 @@ def test_decode_invitation_token_does_not_work_if_there_are_missing_keys(email_a
 def test_decode_invitation_token_does_not_work_if_bad_token(email_app):
     with email_app.app_context():
         data = {'email_address': 'test-user@email.com', 'supplier_name': 'A. Supplier'}
-        token = generate_token(data, email_app.config['SHARED_EMAIL_KEY'], email_app.config['INVITE_EMAIL_SALT'])[1:]
+        token = generate_token(data, TEST_SECRET_KEY, email_app.config['INVITE_EMAIL_SALT'])[1:]
 
         assert decode_invitation_token(token, role='supplier') is None
 
@@ -242,15 +248,7 @@ def test_decode_invitation_token_does_not_work_if_bad_token(email_app):
 def test_decode_invitation_token_does_not_work_if_token_expired(email_app):
     with freeze_time('2015-01-02 03:04:05'):
         data = {'email_address': 'test-user@email.com', 'supplier_name': 'A. Supplier'}
-        token = generate_token(data, email_app.config['SHARED_EMAIL_KEY'], email_app.config['INVITE_EMAIL_SALT'])
+        token = generate_token(data, TEST_SECRET_KEY, email_app.config['INVITE_EMAIL_SALT'])
+
     with email_app.app_context():
-
         assert decode_invitation_token(token, role='supplier') is None
-
-
-def test_token_created_before_password_last_changed():
-    january_first = datetime.strptime("2016-01-01T12:00:00.30Z", DATETIME_FORMAT)
-    january_second = datetime.strptime("2016-02-01T12:00:00.30Z", DATETIME_FORMAT)
-
-    assert token_created_before_password_last_changed(january_first, january_second) is True
-    assert token_created_before_password_last_changed(january_second, january_first) is False
