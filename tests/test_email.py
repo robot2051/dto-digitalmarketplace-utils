@@ -120,7 +120,7 @@ def test_can_generate_token():
 
 
 def test_parse_timestamp_from_token():
-    test_time = datetime(2000, 01, 01)
+    test_time = datetime(2000, 1, 1)
     with freeze_time(test_time):
         data = {}
         token = generate_token(data, TEST_SECRET_KEY, 'PassSalt')
