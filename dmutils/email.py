@@ -1,7 +1,10 @@
 import base64
+from datetime import datetime, timedelta
 import hashlib
+import json
 import six
 from string import Template
+import struct
 import sys
 import textwrap
 
@@ -11,12 +14,11 @@ from flask import current_app, flash
 from flask._compat import string_types
 
 from datetime import datetime
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from cryptography.fernet import Fernet, InvalidToken
 
 from .formats import DATETIME_FORMAT
 
 ONE_DAY_IN_SECONDS = 86400
-SEVEN_DAYS_IN_SECONDS = 604800
 
 
 class EmailError(Exception):
@@ -75,19 +77,24 @@ def send_email(to_email_addresses, email_body, subject, from_email, from_name, r
 
 
 def generate_token(data, secret_key, salt):
-    ts = URLSafeTimedSerializer(secret_key)
-    return ts.dumps(data, salt=salt)
+    """
+    Matches the itsdangerous functionality, but with encryption (using Fernet).
+
+    The "salt" isn't a cryptographic salt.  Use a different salt for different handlers to avoid replay attacks
+    (e.g., a token created for /create-buyer-user being sent by an attacker to /give-user-admin-rights)
+    """
+    json_data = json.dumps(data)
+    fernet = Fernet(secret_key)
+    return fernet.encrypt(b'{}\0{}'.format(salt, json_data))
 
 
-def decode_token(token, secret_key, salt, max_age_in_seconds=86400):
-    ts = URLSafeTimedSerializer(secret_key)
-    decoded, timestamp = ts.loads(
-        token,
-        salt=salt,
-        max_age=max_age_in_seconds,
-        return_timestamp=True
-    )
-    return decoded, timestamp
+def decode_token(token, secret_key, salt, max_age_in_seconds=ONE_DAY_IN_SECONDS):
+    fernet = Fernet(secret_key)
+    cleartext = fernet.decrypt(token, ttl=max_age_in_seconds)
+    token_salt, json_data = cleartext.split(b'\0', 1)
+    if token_salt != salt:
+        raise InvalidToken
+    return json.loads(json_data)
 
 
 def hash_email(email):
@@ -97,19 +104,34 @@ def hash_email(email):
     return base64.urlsafe_b64encode(m.digest())
 
 
+def parse_fernet_timestamp(ciphertext):
+    """
+    Returns timestamp embedded in Fernet-encrypted ciphertext, converted to Python datetime object.
+
+    Decryption should be attempted before using this function, as that does cryptographically strong tests on the
+    validity of the ciphertext.
+    """
+    try:
+        decoded = base64.urlsafe_b64decode(ciphertext)
+        # This is a value in Unix Epoch time
+        epoch_timestamp = struct.unpack('>Q', decoded[1:9])[0]
+        timestamp = datetime(1970, 1, 1) + timedelta(seconds=epoch_timestamp)
+        return timestamp
+    except struct.error as e:
+        raise ValueError(e.message)
+
+
 def decode_password_reset_token(token, data_api_client):
     try:
-        decoded, timestamp = decode_token(
+        decoded = decode_token(
             token,
             current_app.config["SECRET_KEY"],
             current_app.config["RESET_PASSWORD_SALT"],
             ONE_DAY_IN_SECONDS
         )
-    except SignatureExpired:
-        current_app.logger.info("Password reset attempt with expired token.")
-        return {'error': 'token_expired'}
-    except BadSignature as e:
-        current_app.logger.info("Error changing password: {error}", extra={'error': six.text_type(e)})
+        timestamp = parse_fernet_timestamp(token)
+    except InvalidToken:
+        current_app.logger.info('Invalid password reset token {}'.format(token))
         return {'error': 'token_invalid'}
 
     user = data_api_client.get_user(decoded["user"])
@@ -118,10 +140,7 @@ def decode_password_reset_token(token, data_api_client):
         DATETIME_FORMAT
     )
 
-    if token_created_before_password_last_changed(
-            timestamp,
-            user_last_changed_password_at
-    ):
+    if timestamp < user_last_changed_password_at:
         current_app.logger.info("Error changing password: Token generated earlier than password was last changed.")
         return {'error': 'token_invalid'}
 
@@ -131,29 +150,16 @@ def decode_password_reset_token(token, data_api_client):
 def decode_invitation_token(encoded_token, role):
     required_fields = ['email_address', 'supplier_code', 'supplier_name'] if role == 'supplier' else ['email_address']
     try:
-        token, timestamp = decode_token(
+        token = decode_token(
             encoded_token,
             current_app.config['SHARED_EMAIL_KEY'],
             current_app.config['INVITE_EMAIL_SALT'],
-            SEVEN_DAYS_IN_SECONDS
+            7*ONE_DAY_IN_SECONDS
         )
         if all(field in token for field in required_fields):
             return token
         else:
             raise ValueError('Invitation token is missing required keys')
-    except SignatureExpired as e:
-        current_app.logger.info("Invitation attempt with expired token. error {error}",
-                                extra={'error': six.text_type(e)})
+    except Exception as e:
+        current_app.logger.info('Invalid invitation token {}.  Error message: {}'.format(encoded_token, e.message))
         return None
-    except BadSignature as e:
-        current_app.logger.info("Invitation reset attempt with expired token. error {error}",
-                                extra={'error': six.text_type(e)})
-        return None
-    except ValueError as e:
-        current_app.logger.info("error {error}",
-                                extra={'error': six.text_type(e)})
-        return None
-
-
-def token_created_before_password_last_changed(token_timestamp, user_timestamp):
-    return token_timestamp < user_timestamp
