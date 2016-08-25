@@ -28,7 +28,7 @@ class Config(object):
     CSRF_TIME_LIMIT = 30
     DM_DEFAULT_CACHE_MAX_AGE = 60
     SECRET_KEY = 'secret'
-    BASE_TEMPLATE_DATA = {}
+    ASSET_PATH = '/static'
 
 
 class BaseApplicationTest(object):
