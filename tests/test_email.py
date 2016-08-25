@@ -15,6 +15,7 @@ from dmutils.formats import DATETIME_FORMAT
 from .test_user import user_json
 
 TEST_SECRET_KEY = 'TestKeyTestKeyTestKeyTestKeyTestKeyTestKeyX='
+TEST_ARCHIVE_ADDRESS = 'marketplace+archive@digital.gov.au'
 
 
 @pytest.yield_fixture
@@ -28,9 +29,10 @@ def email_client():
 def email_app(app):
     init_app(app)
     app.config['SHARED_EMAIL_KEY'] = TEST_SECRET_KEY
-    app.config['INVITE_EMAIL_SALT'] = "Salt"
+    app.config['INVITE_EMAIL_SALT'] = 'Salt'
     app.config['SECRET_KEY'] = TEST_SECRET_KEY
-    app.config["RESET_PASSWORD_SALT"] = "PassSalt"
+    app.config['RESET_PASSWORD_SALT'] = 'PassSalt'
+    app.config['DM_EMAIL_BCC_ADDRESS'] = TEST_ARCHIVE_ADDRESS
     yield app
 
 
@@ -48,7 +50,7 @@ def test_calls_send_email_with_correct_params(email_app, email_client):
         ReplyToAddresses=['from_email'],
         Message={'Body': {'Html': {'Charset': 'UTF-8', 'Data': 'body'}},
                  'Subject': {'Charset': 'UTF-8', 'Data': 'subject'}},
-        Destination={'ToAddresses': ['email_address']},
+        Destination={'ToAddresses': ['email_address'], 'BccAddresses': [TEST_ARCHIVE_ADDRESS]},
         Source=u'from_name <from_email>'
     )
 
@@ -84,7 +86,7 @@ def test_calls_send_email_with_alternative_reply_to(email_app, email_client):
         ReplyToAddresses=['reply_address'],
         Message={'Body': {'Html': {'Charset': 'UTF-8', 'Data': 'body'}},
                  'Subject': {'Charset': 'UTF-8', 'Data': 'subject'}},
-        Destination={'ToAddresses': ['email_address']},
+        Destination={'ToAddresses': ['email_address'], 'BccAddresses': [TEST_ARCHIVE_ADDRESS]},
         Source=u'from_name <from_email>'
     )
 
