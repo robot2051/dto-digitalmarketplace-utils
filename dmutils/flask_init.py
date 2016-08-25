@@ -5,6 +5,7 @@ from flask import Markup, redirect, request, session
 from flask.ext.script import Manager, Server
 from flask_login import current_user
 
+from asset_fingerprint import AssetFingerprinter
 from user import User, user_logging_string
 
 
@@ -53,12 +54,6 @@ def init_app(
     def add_header(response):
         response.headers['X-Frame-Options'] = 'DENY'
         return response
-
-    @application.context_processor
-    def inject_global_template_variables():
-        return dict(
-            pluralize=pluralize,
-            **(application.config['BASE_TEMPLATE_DATA'] or {}))
 
 
 def init_frontend_app(application, data_api_client, login_manager):
@@ -113,6 +108,16 @@ def init_frontend_app(application, data_api_client, login_manager):
             response.cache_control.max_age = application.config['DM_DEFAULT_CACHE_MAX_AGE']
 
         return response
+
+    @application.context_processor
+    def inject_global_template_variables():
+        template_data = {
+            'pluralize': pluralize,
+            'header_class': 'with-proposition',
+            'asset_path': application.config['ASSET_PATH'] + '/',
+            'asset_fingerprinter': AssetFingerprinter(asset_root=application.config['ASSET_PATH'] + '/')
+        }
+        return template_data
 
     @application.template_filter('markdown')
     def markdown_filter_flask(data):
