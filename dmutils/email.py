@@ -48,11 +48,15 @@ def send_email(to_email_addresses, email_body, subject, from_email, from_name, r
         try:
             email_client = boto3.client('ses')
 
+            destination_addresses = {
+                'ToAddresses': to_email_addresses,
+            }
+            if 'DM_EMAIL_BCC_ADDRESS' in current_app.config:
+                destination_addresses['BccAddresses'] = [current_app.config['DM_EMAIL_BCC_ADDRESS']]
+
             result = email_client.send_email(
                 Source=u"{} <{}>".format(from_name, from_email),
-                Destination={
-                    'ToAddresses': to_email_addresses
-                },
+                Destination=destination_addresses,
                 Message={
                     'Subject': {
                         'Data': subject,
