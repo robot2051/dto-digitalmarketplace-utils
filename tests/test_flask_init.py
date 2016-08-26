@@ -1,4 +1,8 @@
-from dmutils.flask_init import pluralize
+from flask.ext.cache import Cache
+
+from dmutils.flask_init import pluralize, init_app, init_frontend_app
+from helpers import BaseApplicationTest, Config
+
 import pytest
 
 
@@ -9,3 +13,25 @@ import pytest
 ])
 def test_pluralize(count, singular, plural, output):
     assert pluralize(count, singular, plural) == output
+
+
+class TestDevCacheInit(BaseApplicationTest):
+
+    def setup(self):
+        self.cache = Cache()
+        self.config.DM_CACHE_TYPE = 'dev'
+        super(TestDevCacheInit, self).setup()
+
+    def test_config(self):
+        assert self.cache.config['CACHE_TYPE'] == 'simple'
+
+
+class TestProdCacheInit(BaseApplicationTest):
+
+    def setup(self):
+        self.cache = Cache()
+        self.config.DM_CACHE_TYPE = 'prod'
+        super(TestProdCacheInit, self).setup()
+
+    def test_config(self):
+        assert self.cache.config['CACHE_TYPE'] == 'filesystem'

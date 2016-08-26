@@ -18,6 +18,7 @@ def init_app(
         feature_flags=None,
         login_manager=None,
         search_api_client=None,
+        cache=None,
 ):
 
     application.config.from_object(config_object)
@@ -45,6 +46,19 @@ def init_app(
         login_manager.init_app(application)
     if search_api_client:
         search_api_client.init_app(application)
+    if cache:
+        cache_type = application.config.get('DM_CACHE_TYPE', 'prod')
+        if cache_type == 'dev':
+            # This is "not really thread safe" - a.k.a not thread safe
+            # Only for dev mode
+            cache_config = {'CACHE_TYPE': 'simple'}
+        else:
+            # NICETODO: the memecached backend is supposed to be a drop-in replacement
+            tmp_dir = os.environ.get('TMPDIR', '/tmp')
+            cache_dir = os.path.join(tmp_dir, 'dm-cache')
+            cache_config = {'CACHE_TYPE': 'filesystem', 'CACHE_DIR': cache_dir}
+        cache.config = cache_config
+        cache.init_app(application, config=cache_config)
 
     @application.before_request
     def set_scheme():
