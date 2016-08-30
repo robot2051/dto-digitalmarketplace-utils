@@ -1,6 +1,6 @@
 from flask.ext.cache import Cache
 
-from dmutils.flask_init import pluralize, init_app, init_frontend_app
+from dmutils.flask_init import pluralize, init_app, init_frontend_app, init_manager
 from helpers import BaseApplicationTest, Config
 
 import pytest
@@ -35,3 +35,9 @@ class TestProdCacheInit(BaseApplicationTest):
 
     def test_config(self):
         assert self.cache.config['CACHE_TYPE'] == 'filesystem'
+
+
+class TestInitManager(BaseApplicationTest):
+
+    def test_init_manager(self):
+        manager = init_manager(self.flask, 5000, [])
