@@ -17,7 +17,6 @@ email_validator = Regexp(r'^[^@^\s]+@[\d\w-]+(\.[\d\w-]+)+$',
 
 _GOV_EMAIL_DOMAINS = [
     'gov.au',
-    'digital.cabinet-office.gov.uk',
 ]
 
 
