@@ -4,7 +4,7 @@ contextlib2==0.4.0
 cryptography==1.4
 Flask>=0.10
 six==1.9.0
-pyyaml==3.11
+pyyaml==5.3.1
 python-json-logger==0.1.4
 inflection==0.2.1
 Flask-Cache==0.13.1
